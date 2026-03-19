@@ -1,8 +1,10 @@
+#include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 struct DNS_HEADER {
     unsigned short id;  // unique identifier for each query
@@ -55,6 +57,35 @@ int main() {
     qinfo->qtype = htons(1); // A record
     
     int pkt_len = sizeof(struct DNS_HEADER) + strlen((char*)qname) + 1 + sizeof(struct QUESTION);
-    printf("\n");
+
+    int sockFD = socket(AF_INET , SOCK_DGRAM , IPPROTO_UDP);
+
+    if(sockFD < 0) {
+        perror("Socket Failed\n");
+        return -1;
+    }
+
+    struct sockaddr_in dest;
+    dest.sin_family = AF_INET;
+    dest.sin_port = htons(53);  //default
+    dest.sin_addr.s_addr = inet_addr("8.8.8.8"); // Google's DNS
+
+    if(sendto(sockFD,buffer,pkt_len,0,(struct sockaddr *)&dest,sizeof(dest)) < 0) {
+        perror("sendtp failed!\n");
+        return -1;
+    }
+    printf("Query Sent!!\n");
+
+    // Recieving the response
+
+    socklen_t dest_len = sizeof(dest);
+    int res = recvfrom(sockFD, buffer , sizeof(buffer) , 0 , (struct sockaddr *)&dest , &dest_len);
+
+    if(res < 0) {
+        perror("recvfrom failed\n");
+        return -1;
+    }
+    printf("Got response: %d bytes\n", res);
+    close(sockFD);
     return 0;
 }
