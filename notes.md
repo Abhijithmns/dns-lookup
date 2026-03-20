@@ -21,7 +21,7 @@
 
 HEADER = 12bytes
 
-packet we are sending -> HEADER + QUESTION
+packet we are sending -> HEADER + QNAME + QTYPE + ANSWER
 /*The structure of the DNS packet will be:
 	16 bits:ID
 	16 bits:header
@@ -31,6 +31,23 @@ packet we are sending -> HEADER + QUESTION
 	16 bits:additional info*/
 
 /*DNS header*/
+
+### DNS Answers
+- The Structure of the DNS Answer will be:
+
+- NAME
+- TYPE
+- CLASS
+- TTL
+- RDLENGTH // length of RDATA part
+- RDATA
+
+RDATA is the data of response
+
+## DNS Compression
+
+- 
+
 
 ### TO DO 
 
