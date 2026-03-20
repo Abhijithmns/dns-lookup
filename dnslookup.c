@@ -20,6 +20,19 @@ struct QUESTION {
     unsigned short qclass;
 };
 
+#pragma pack(push,1) // using just pack without stacks can affect other structures defined after this
+struct R_DATA {
+    unsigned short type;
+    unsigned short _class;
+    unsigned int ttl;
+    unsigned short data_len;
+};
+#pragma pack(pop)
+
+
+
+
+
 void encode_input(unsigned char *dst, char *src) {
     int j = 0, start = 0;
     int len = strlen(src);
@@ -49,7 +62,7 @@ int main() {
     dns->arcount = 0;
 
     unsigned char *qname = buffer + sizeof(struct DNS_HEADER);
-    char *domain = "www.google.com";
+    char *domain = "www.pesuacademy.com";
     encode_input(qname,domain);
 
     struct QUESTION *qinfo = (struct QUESTION *)(qname + strlen((char *)qname) + 1);
@@ -68,7 +81,7 @@ int main() {
     struct sockaddr_in dest;
     dest.sin_family = AF_INET;
     dest.sin_port = htons(53);  //default
-    dest.sin_addr.s_addr = inet_addr("8.8.8.8"); // Google's DNS
+    dest.sin_addr.s_addr = inet_addr("1.1.1.1"); // Google's DNS
 
     if(sendto(sockFD,buffer,pkt_len,0,(struct sockaddr *)&dest,sizeof(dest)) < 0) {
         perror("sendtp failed!\n");
@@ -85,7 +98,28 @@ int main() {
         perror("recvfrom failed\n");
         return -1;
     }
-    printf("Got response: %d bytes\n", res);
+
     close(sockFD);
+
+    // re-read the header from response
+    dns = (struct DNS_HEADER *) buffer;
+    int ans_count = ntohs(dns->anscount);
+    printf("Got %d answers:\n", ans_count);
+
+    //skip past the header + question sections to reach ans section
+    unsigned char *reader = buffer + sizeof(struct DNS_HEADER) + strlen((char *)qname) + 1 + sizeof(struct QUESTION);
+    
+    struct sockaddr_in ans;
+    for(int i = 0; i < ans_count; i++) {
+        reader += 2; // skip name its a compression pointer
+        struct R_DATA *resource = (struct R_DATA *)reader;
+        reader += sizeof(struct R_DATA);
+
+        if(ntohs(resource->type) == 1) { // A record
+            memcpy(&ans.sin_addr, reader , 4);
+            printf("IP: %s\n", inet_ntoa(ans.sin_addr));
+        } 
+        reader += ntohs(resource->data_len);
+    }
     return 0;
 }
